@@ -1,0 +1,69 @@
+				R format types
+
+				ADD
+				commad R format				
+				opcode = 0110011		
+				func3 = 000			
+				func7 = 0000000 				
+				alusel = 0000
+	
+
+
+AND				OR 				XOR 
+command R format		commad R format			commad R format	
+opcode = 0110011		opcode = 0110011 		opcode = 0110011
+func3  =  111			func3 = 110			func3 = 100
+func7 = 0000000			func7 = 0000000			func7 = 0000000	
+Alusel = 0001			alusel = 0010			alusel = 0011
+
+SRL				SRA 				SLL 
+command R format		commad R format			commad R format	
+opcode = 0110011		opcode = 0110011 		opcode = 0110011
+func3  =  101			func3 = 101			func3 = 001
+func7 = 0000000			func7 = 0100000			func7 = 0000000	
+Alusel = 00100			alusel = 0101			alusel = 0110
+
+
+SLT				DIV				REM 
+command R format		commad R format			commad R format	
+opcode = 0110011		opcode =  		opcode = 0110011
+func3  =  010			func3 = 			func3 = 100
+func7 = 0000000			func7 = 		func7 = 0000000	
+Alusel = 0111			alusel = 1000			alusel = 1001
+
+MULT				MULTH 				SUB 
+command R format		commad R format			commad R format	
+opcode = 			opcode =  			opcode = 0110011 
+func3  =  			func3 = 			func3 = 000
+func7 = 			func7 = 			func7 = 0100000	
+Alusel = 1010			alusel = 1011			alusel = 1100
+
+
+BSEL
+commad R format				
+opcode = 		
+func3 = 			
+func7 = 				
+alusel = 1101
+
+
+
+			I format types
+
+ADDI				LW 				 
+command R format		commad R format				
+opcode = 0010011		opcode = 0000011 		
+func3  =  000			func3 = 010			
+func7 = 			func7 = 0000000				
+Alusel = 0000			alusel = 0000	
+
+
+
+				S format types
+
+ADDI							 
+command R format						
+opcode = 0110011		 		
+func3  =  111						
+func7 = 0000000					
+Alusel = 0000							
