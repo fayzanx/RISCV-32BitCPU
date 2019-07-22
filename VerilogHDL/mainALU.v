@@ -1,6 +1,6 @@
-module mainALU #(parameter ALUw = 32;) (
-    output [(ALUw-1)):0] outALU, //result
-    input  [(ALUw-1)):0] inALUa, inALUb, //operands
+module mainALU #(parameter ALUw = 32) (
+    output [(ALUw-1):0] outALU, //result
+    input  [(ALUw-1):0] inALUa, inALUb, //operands
     input  [3:0] ALUSel //tells what operation to perform
 );
     // temporary holders / nets
@@ -8,9 +8,9 @@ module mainALU #(parameter ALUw = 32;) (
     wire [(ALUw-1):0] opADD, opSUB, opMULh, opMULt;
 
     // computation operations
-    ALU_addSub #(ALUw) (opADD, inALUa, inALUb, 1'b0);
-    ALU_multiplyU #(ALUw) ({opMULh, opMULt}, inALUa, inALUb);
-    ALU_addSub #(ALUw) (opSUB, inALUa, inALUb, 1'b1);
+    ALU_addSub #(ALUw) calcSum(opADD, inALUa, inALUb, 1'b0);
+    ALU_multiplyU #(ALUw) calcMul({opMULh, opMULt}, inALUa, inALUb);
+    ALU_addSub #(ALUw) calcSub(opSUB, inALUa, inALUb, 1'b1);
 
     // a MUXer
     always@(*) begin
@@ -40,7 +40,7 @@ module mainALU #(parameter ALUw = 32;) (
 endmodule
 
 // for addition and subtraction
-module ALU_addSub #(parameter adderW = 32;)(
+module ALU_addSub #(parameter adderW = 32)(
     output [(adderW-1):0]sumOUT,
     input  [(adderW-1):0]adderA, adderB,
     input  addOrSub
@@ -57,7 +57,7 @@ module ALU_addSub #(parameter adderW = 32;)(
 endmodule
 
 // for multiplication (unsigned)
-module ALU_multiplyU #(parameter mulW = 32;) (
+module ALU_multiplyU #(parameter mulW = 32) (
     output reg [((2*mulW)-1):0] mulOUT,
     input  [(mulW-1):0] mulA, mulB
 );
