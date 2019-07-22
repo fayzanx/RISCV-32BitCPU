@@ -6,7 +6,7 @@ module mainALU #(parameter ALUw = 32) (
     // temporary holders / nets
     reg  [(ALUw-1):0] finalALU;
     wire [(ALUw-1):0] opADD, opSUB, opMULh, opMULt;
-
+    
     // computation operations
     ALU_addSub #(ALUw) calcSum(opADD, inALUa, inALUb, 1'b0);
     ALU_multiplyU #(ALUw) calcMul({opMULh, opMULt}, inALUa, inALUb);

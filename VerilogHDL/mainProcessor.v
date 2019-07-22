@@ -6,6 +6,20 @@ module mainProcessor(
     mainALU #(32) testALU(S, A, B, ALUSel);
 endmodule
 
+// posedge counter with async reset
+module programCounter #(parameter counterWidth = 16)(
+    output reg [(counterWidth-1):0]PC,
+    input  pCLK, pRST
+);
+    always@(posedge pCLK or posedge pRST) begin
+        if (pRST) begin
+            PC <= 1'b0;
+        end else begin
+            PC <= PC + 1'b1;
+        end
+    end
+endmodule
+
 module testBenchGen;
 
 endmodule

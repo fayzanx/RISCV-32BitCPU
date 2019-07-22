@@ -26,6 +26,7 @@ $RECYCLE.BIN/
 
 #Ignore Altera generated backup files
 *.bak
+*.v.bak
 
 # Ingore VSCode Settings
 .vscode/
