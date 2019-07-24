@@ -3,19 +3,50 @@ module mainProcessor(
     input  [31:0]A, B,
     input  [3:0]ALUSel
 );
+
+    instMemory #(32, 16) myIMEM(.inst(), .pcVal(), .sysCLK()); 
+    
+    programCounter #(16) myPC(.PC(), .sysCLK(), .pRST());
+
     mainALU #(32) testALU(S, A, B, ALUSel);
+
+    registerFile #(32, 5) riscRegisters(
+        .regDataA(), .regDataB(), .regDataD(), .addrA(), .addrB(),
+        .addrD(), .regWEn(), .sysCLK()
+    );
+
+
 endmodule
 
 // posedge counter with async reset
 module programCounter #(parameter counterWidth = 16)(
     output reg [(counterWidth-1):0]PC,
-    input  pCLK, pRST
+    input  sysCLK, pRST
 );
-    always@(posedge pCLK or posedge pRST) begin
+    always@(posedge sysCLK or posedge pRST) begin
         if (pRST) begin
             PC <= 1'b0;
         end else begin
             PC <= PC + 1'b1;
+        end
+    end
+endmodule
+
+/*  A Generalized 2x1 MUX
+https://github.com/fayzanx/FPGA-VerilogHDL-Course/blob/cfc8c870b1298050ed9b8463b5b1c7bde273158c/B_muxers.v
+    Instantiation: mux2x1 #(width) name(.M(), .X(), .Y(), .Sel());    */
+module mux2x1 #(parameter dataW=16)(
+    output reg [(dataW-1):0]M,
+    input  [(dataW-1):0]X,
+    input  [(dataW-1):0]Y,
+    input  Sel
+);
+    always@(*) begin
+        if (Sel) begin
+            M = Y;
+        end
+        else begin
+            M = X;
         end
     end
 endmodule
