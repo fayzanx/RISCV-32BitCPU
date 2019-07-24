@@ -15,6 +15,23 @@ module instMemory #(parameter instructionW=32, parameter addrW=16) (
 	end
 endmodule
 
+// DATA MEMORY
+module dataMemory #(parameter dataW=32, parameter addrW=16) (
+	output [(dataW-1):0] memDataR,
+	input  [(dataW-1):0] memDataW,
+	input  [(addrW-1):0] addrD,
+	input  memRW, sysCLK
+);
+	genericRAM #(dataW, addrW) dmem(
+		.Q(memDataR),
+		.dataIN(memDataW), 
+		.addr(addrD), 
+		.pCLK(sysCLK), 
+		.enWR(memRW)
+	);
+	
+endmodule
+
 // register File
 // a RAM with single port in, dual port out
 module registerFile #(parameter dataWidth=32, parameter addrWidth=5) (
@@ -77,4 +94,26 @@ module mem_Dflippos(
 			Q <= D;
 		end
 	end
+endmodule
+
+/*
+A generic RAM module for memory without lpm
+Instantiation: genericRAM #(dataW, addrW) ram_inst(.Q(), .dataIN(), .addr(), .pCLK(), .enWR());
+https://github.com/fayzanx/FPGA-VerilogHDL-Course/blob/cfc8c870b1298050ed9b8463b5b1c7bde273158c/B_memoryFlops.v
+*/
+module genericRAM #(parameter dataW = 8, parameter addrW = 5) (
+	output [(dataW-1):0]Q,
+	input  [(dataW-1):0]dataIN,
+	input  [(addrW-1):0]addr,
+	input  pCLK, enWR
+);
+	reg [(dataW-1):0]storageData[((2**addrW)-1):0];
+	reg [(addrW-1):0]storageAddr;
+	always@(posedge pCLK) begin
+		if(enWR == 1'b1) begin
+			storageData[addr] <= dataIN;
+		end
+			storageAddr <= addr;
+	end
+	assign Q = storageData[storageAddr];
 endmodule
