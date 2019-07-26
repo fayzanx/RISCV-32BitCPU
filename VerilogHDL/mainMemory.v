@@ -7,7 +7,7 @@ module instMemory #(parameter instructionW=32, parameter addrW=16) (
 	reg [instructionW-1:0] instructionROM[2**addrW-1:0];
 	
 	initial begin
-		$readmemh("C:/Users/Faizan Ahmad/Documents/Education/Y2Ss 2019/Internship/RISCV-32BitCPU/VerilogHDL/rom_instruction_memory.txt", instructionROM);
+		$readmemh("C:/rom_instruction_memory.txt", instructionROM);
 	end
 
 	always @ (posedge sysCLK) begin
@@ -38,7 +38,7 @@ endmodule
     );
 */
 /*module ControlPath32v1 #(parameter controlWordWidth=16, parameter caddrW=16)(
-    output [14:0] controlWord,
+    output reg [14:0] controlWord,
     input  [11:0] instrBits,
     input  sysCLK
 );
@@ -51,11 +51,11 @@ endmodule
     assign controlAddr[15]      = instrBits[11];
 
     // Accessing Storage
-    reg [(controlWordWidth-1):0] controlWord;
+    //reg [(controlWordWidth-1):0] controlWord;
     reg [(controlWordWidth-1):0] controlrom[((2**caddrW)-1):0];
 	
 	initial begin
-		$readmemh("C:/Users/Faizan Ahmad/Documents/Education/Y2Ss 2019/Internship/RISCV-32BitCPU/VerilogHDL/rom_control_words_memory.txt", controlrom);
+		$readmemh("C:/rom_control_words_memory.txt", controlrom);
 	end
 
 	always @ (posedge sysCLK) begin
@@ -102,10 +102,10 @@ module ControlPath32v2 (
 	/*-------------------------------
 		L-Type		 0		00000
 		I-Type		 4		00100
-		Iw-Type		 6		00110
+		Iw-Type		 6		00110 [SW]
 		S-Type		 8		01000
 		R-Type		12		11000
-		Rw-Type		14		01110
+		Rw-Type		14		01110 [SW]
 		SB-Type		24		11000
 	-------------------------------*/
 	
@@ -113,8 +113,10 @@ module ControlPath32v2 (
 	always@(posedge sysCLK) begin
 		case(instrBits[6:2] /*OPCODE*/)
 		//PCSel, ImmSel, BrUn, ASel, BSel, ALUSel, MemRW, RegWEn, WBSel
-			5'b11000: controlWord <= {1'b0, 3'b000/*x*/, 1'b0/*X*/, 1'b0, 1'b0, 4'b0000, 1'b0, 1'b1, 1'b0}; //R
-			5'b00100: controlWord <= {1'b0, 3'b000, 1'b0/*x*/, 1'b0, 1'b1, 4'b0000, 1'b0, 1'b1, 1'b0}; //I
+			5'b00000: controlWord <= {1'b0, 3'b000, 1'bx, 1'b0, 1'b1, 4'b0000, 1'b0, 1'b1, 1'b1}; //L
+			5'b11000: controlWord <= {1'b0, 3'bxxx, 1'bx, 1'b0, 1'b0, 4'b0000, 1'b0, 1'b1, 1'b0}; //R
+			5'b00100: controlWord <= {1'b0, 3'b000, 1'bx, 1'b0, 1'b1, 4'b0000, 1'b0, 1'b1, 1'b0}; //I
+			5'b01000: controlWord <= {1'b0, 3'b001, 1'bx, 1'b0, 1'b1, 4'b0000, 1'b1, 1'b0, 1'bx}; //S
 			default: controlWord <= 15'b0;
 		endcase
 	end
@@ -133,7 +135,7 @@ module registerFile #(parameter dataWidth=32, parameter addrWidth=5) (
 
 	// regFile initializer
 	initial begin
-		$readmemh("C:/Users/Faizan Ahmad/Documents/Education/Y2Ss 2019/Internship/RISCV-32BitCPU/VerilogHDL/mem_register_file.txt", regFile);
+		$readmemh("C:/mem_register_file.txt", regFile);
 	end
 
 	always@(posedge sysCLK) begin
