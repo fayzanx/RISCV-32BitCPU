@@ -4,14 +4,14 @@ module instMemory #(parameter instructionW=32, parameter addrW=16) (
 	input [(addrW-1):0] pcVal,
 	input sysCLK
 );
-	reg [instructionW-1:0] rom[2**addrW-1:0];
+	reg [instructionW-1:0] instructionROM[2**addrW-1:0];
 	
 	initial begin
-		$readmemh("rom_instruction_memory.txt", rom);
+		$readmemh("C:/Users/Faizan Ahmad/Documents/Education/Y2Ss 2019/Internship/RISCV-32BitCPU/VerilogHDL/rom_instruction_memory.txt", instructionROM);
 	end
 
 	always @ (posedge sysCLK) begin
-		inst <= rom[pcVal];
+		inst <= instructionROM[pcVal];
 	end
 endmodule
 
@@ -24,23 +24,46 @@ module dataMemory #(parameter dataW=32, parameter addrW=16) (
 	input  memRW, sysCLK
 );
 	genericRAM #(dataW, addrW) dmem(
-		.Q(memDataR),
-		.dataIN(memDataW), 
-		.addr(addrD), 
-		.pCLK(sysCLK), 
-		.enWR(memRW)
+		.Q(memDataR), .dataIN(memDataW), .addr(addrD), 
+		.pCLK(sysCLK), .enWR(memRW)
 	);
 
 endmodule
 
 
 /* Control Path
-    ControlPath32 #(controlWordWidth, parameter caddrW)(
+    ControlPathDriver #(controlWordWidth, parameter caddrW)(
         .PCSel(), .ImmSel(), .BrUn(), .ASel(), .BSel(), .ALUSel(),
         .MemRW(), .RegWEn(), .WBSel(), .inst32(), .BrEq(), .BrLt(), .sysCLK()
     );
 */
-module ControlPath32 #(parameter controlWordWidth=16, parameter caddrW=16)(
+/*module ControlPath32v1 #(parameter controlWordWidth=16, parameter caddrW=16)(
+    output [14:0] controlWord,
+    input  [11:0] instrBits,
+    input  sysCLK
+);
+    // preparing access location address
+    wire [15:0] controlAddr;
+    assign controlAddr[11:0]    = instrBits[11:0];
+    assign controlAddr[12]      = instrBits[11]; //sign extension
+    assign controlAddr[13]      = instrBits[11]; 
+    assign controlAddr[14]      = instrBits[11];
+    assign controlAddr[15]      = instrBits[11];
+
+    // Accessing Storage
+    reg [(controlWordWidth-1):0] controlWord;
+    reg [(controlWordWidth-1):0] controlrom[((2**caddrW)-1):0];
+	
+	initial begin
+		$readmemh("C:/Users/Faizan Ahmad/Documents/Education/Y2Ss 2019/Internship/RISCV-32BitCPU/VerilogHDL/rom_control_words_memory.txt", controlrom);
+	end
+
+	always @ (posedge sysCLK) begin
+		controlWord <= controlrom[controlAddr];
+	end
+endmodule*/
+
+module controlPathDriver #(parameter controlWordWidth=16, parameter caddrW=16) (
     output PCSel,
     output [2:0] ImmSel,
     output BrUn, ASel, BSel,
@@ -51,38 +74,50 @@ module ControlPath32 #(parameter controlWordWidth=16, parameter caddrW=16)(
     input  BrEq, BrLt,
     input  sysCLK
 );
-    // preparing access location address
-    wire [15:0] controlAddr;
-    assign controlAddr[11:0]    = {inst32[30], inst32[14:12], inst32[6:2], BrEq, BrLt};
-    assign controlAddr[12]      = inst32[30]; //sign extension
-    assign controlAddr[13]      = inst32[30]; 
-    assign controlAddr[14]      = inst32[30];
-    assign controlAddr[15]      = inst32[30];
 
+	wire [14:0] rawControlWord;	// one word to drive 'em all
+	wire [11:0] rawInstCodes;	// all the bits that matter
+	assign rawInstCodes[11:0] = {inst32[30], inst32[14:12], inst32[6:2], BrEq, BrLt};
 
-    // Accessing Storage
-    reg [(controlWordWidth-1):0] controlWord;
-    reg [(controlWordWidth-1):0] controlrom[((2**caddrW)-1):0];
+	ControlPath32v2 callCP(rawControlWord[14:0], rawInstCodes[11:0], sysCLK);
+
+	// Preparing Controls to output
+    assign PCSel        = rawControlWord[14];
+    assign ImmSel[2:0]  = rawControlWord[13:11];
+    assign BrUn         = rawControlWord[10];
+    assign ASel         = rawControlWord[9];
+    assign BSel         = rawControlWord[8];
+    assign ALUSel[3:0]  = rawControlWord[7:4];
+    assign MemRW        = rawControlWord[3];
+    assign RegWEn       = rawControlWord[2];
+    assign WBSel[1:0]   = rawControlWord[1:0];
+
+endmodule
+
+module ControlPath32v2 (
+    output reg [14:0] controlWord,
+    input  [11:0] instrBits,
+    input  sysCLK
+);
+	/*-------------------------------
+		L-Type		 0		00000
+		I-Type		 4		00100
+		Iw-Type		 6		00110
+		S-Type		 8		01000
+		R-Type		12		11000
+		Rw-Type		14		01110
+		SB-Type		24		11000
+	-------------------------------*/
 	
-	initial begin
-		$readmemh("rom_control_words_memory.txt", controlrom);
+	initial controlWord = 15'b0;
+	always@(posedge sysCLK) begin
+		case(instrBits[6:2] /*OPCODE*/)
+		//PCSel, ImmSel, BrUn, ASel, BSel, ALUSel, MemRW, RegWEn, WBSel
+			5'b11000: controlWord <= {1'b0, 3'b000/*x*/, 1'b0/*X*/, 1'b0, 1'b0, 4'b0000, 1'b0, 1'b1, 1'b0}; //R
+			5'b00100: controlWord <= {1'b0, 3'b000, 1'b0/*x*/, 1'b0, 1'b1, 4'b0000, 1'b0, 1'b1, 1'b0}; //I
+			default: controlWord <= 15'b0;
+		endcase
 	end
-
-	always @ (posedge sysCLK) begin
-		controlWord <= controlrom[controlAddr];
-	end
-
-    // Preparing Controls to output
-    assign PCSel        = controlWord[14];
-    assign ImmSel[2:0]  = controlWord[13:11];
-    assign BrUn         = controlWord[10];
-    assign ASel         = controlWord[9];
-    assign BSel         = controlWord[8];
-    assign ALUSel[3:0]  = controlWord[7:4];
-    assign MemRW        = controlWord[3];
-    assign RegWEn       = controlWord[2];
-    assign WBSel[1:0]   = controlWord[1:0];
-    
 endmodule
 
 // register File
@@ -97,9 +132,9 @@ module registerFile #(parameter dataWidth=32, parameter addrWidth=5) (
 	reg [(dataWidth-1):0]regFile[((2**addrWidth)-1):0];
 
 	// regFile initializer
-	/*initial begin
-		$readmemb("mem_register_file.txt", regFile);
-	end*/
+	initial begin
+		$readmemh("C:/Users/Faizan Ahmad/Documents/Education/Y2Ss 2019/Internship/RISCV-32BitCPU/VerilogHDL/mem_register_file.txt", regFile);
+	end
 
 	always@(posedge sysCLK) begin
 		regDataA <= regFile[addrA];
