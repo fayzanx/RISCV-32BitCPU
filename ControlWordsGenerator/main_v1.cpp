@@ -271,3 +271,24 @@ int main()
     cin >> exita;
   }while(!exita);
 }
+
+
+
+/*
+
+    ofstream romFile("../testRomFile.txt");
+    ostringstream romData;
+    for(int i=0; i<64000; i++){
+        if(i % 10 == 0)
+            romData << "0308 ";
+        else
+            romData << "0000 ";
+    }
+
+    romFile << romData.str() << endl;
+    if(romFile)
+        cout << "[...] Saved the command(s) in file." << endl;
+    else
+        cout << "ERROR" << endl;
+
+ */

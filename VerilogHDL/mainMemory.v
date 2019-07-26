@@ -7,13 +7,14 @@ module instMemory #(parameter instructionW=32, parameter addrW=16) (
 	reg [instructionW-1:0] rom[2**addrW-1:0];
 	
 	initial begin
-		$readmemb("rom_instruction_memory.txt", rom);
+		$readmemh("rom_instruction_memory.txt", rom);
 	end
 
 	always @ (posedge sysCLK) begin
 		inst <= rom[pcVal];
 	end
 endmodule
+
 
 // DATA MEMORY
 module dataMemory #(parameter dataW=32, parameter addrW=16) (
@@ -29,7 +30,59 @@ module dataMemory #(parameter dataW=32, parameter addrW=16) (
 		.pCLK(sysCLK), 
 		.enWR(memRW)
 	);
+
+endmodule
+
+
+/* Control Path
+    ControlPath32 #(controlWordWidth, parameter caddrW)(
+        .PCSel(), .ImmSel(), .BrUn(), .ASel(), .BSel(), .ALUSel(),
+        .MemRW(), .RegWEn(), .WBSel(), .inst32(), .BrEq(), .BrLt(), .sysCLK()
+    );
+*/
+module ControlPath32 #(parameter controlWordWidth=16, parameter caddrW=16)(
+    output PCSel,
+    output [2:0] ImmSel,
+    output BrUn, ASel, BSel,
+    output [3:0] ALUSel,
+    output MemRW, RegWEn,
+    output [1:0] WBSel,
+    input  [31:0] inst32,
+    input  BrEq, BrLt,
+    input  sysCLK
+);
+    // preparing access location address
+    wire [15:0] controlAddr;
+    assign controlAddr[11:0]    = {inst32[30], inst32[14:12], inst32[6:2], BrEq, BrLt};
+    assign controlAddr[12]      = inst32[30]; //sign extension
+    assign controlAddr[13]      = inst32[30]; 
+    assign controlAddr[14]      = inst32[30];
+    assign controlAddr[15]      = inst32[30];
+
+
+    // Accessing Storage
+    reg [(controlWordWidth-1):0] controlWord;
+    reg [(controlWordWidth-1):0] controlrom[((2**caddrW)-1):0];
 	
+	initial begin
+		$readmemh("rom_control_words_memory.txt", controlrom);
+	end
+
+	always @ (posedge sysCLK) begin
+		controlWord <= controlrom[controlAddr];
+	end
+
+    // Preparing Controls to output
+    assign PCSel        = controlWord[14];
+    assign ImmSel[2:0]  = controlWord[13:11];
+    assign BrUn         = controlWord[10];
+    assign ASel         = controlWord[9];
+    assign BSel         = controlWord[8];
+    assign ALUSel[3:0]  = controlWord[7:4];
+    assign MemRW        = controlWord[3];
+    assign RegWEn       = controlWord[2];
+    assign WBSel[1:0]   = controlWord[1:0];
+    
 endmodule
 
 // register File

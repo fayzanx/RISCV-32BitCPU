@@ -1,19 +1,30 @@
 module mainProcessor(
-    output [31:0]S,
-    input  [31:0]A, B,
-    input  [3:0]ALUSel,
-    input  mainCLOCK
+        input [3:3]KEY
 );
 
+    //-----------------
+        wire mainCLOCK;
+        assign mainCLOCK = ~KEY[3];
+    //-----------------
     wire [31:0] instr32;
     wire [31:0] PC32;
     wire [15:0] PC16, PC16Next;
     assign PC32[15:0] = PC16[15:0];
 
-    programCounter #(16) myPC(.PC(PC16), .PCNext(PC16Next), .sysCLK(mainCLOCK), .pRST(1'b0));
-    instMemory #(32, 16) myIMEM(.inst(instr32), .pcVal(PC16), .sysCLK(mainCLOCK));    
 
-    // decode the instruction
+    // ---- INSTRUCTION FETCH ----
+    programCounter #(16) myPC(
+        .PC(PC16), .PCNext(PC16Next), .ALUout(aluOut), .PCSel(PCSel), .sysCLK(mainCLOCK), .pRST(1'b0)
+    );
+
+    instMemory #(32, 16) myIMEM(.inst(instr32), .pcVal(PC16), .sysCLK(mainCLOCK));    
+    // ---------------------------
+
+
+
+
+
+    // ---- INSTRUCTION DECODE ----
     // label different parts of the instruction
     wire [6:0] instOPCODE;
     wire [4:0] rs1addr, rs2addr, rdaddr;
@@ -21,17 +32,22 @@ module mainProcessor(
     wire [6:0] funct7;
     splitInstruction getCodes(instOPCODE, rdaddr, rs1addr, rs2addr, funct3, funct7, instr32);
 
-    // register value labels
-    wire [31:0] dataRS1, dataRS2, dataRD;
-    registerFile #(32, 5) riscRegisters(
-        .regDataA(dataRS1), .regDataB(dataRS2), .regDataD(dataRD), .addrA(rs1addr),
-        .addrB(rs2addr), .addrD(rdaddr), .regWEn(), .sysCLK(mainCLOCK)
-    );
-
     // generate immidiates
     wire [31:0] immidiate32b;
-    immideateGen #(32) immInst(.imm32(immidiate32b), .instr(instr32), .immSelect(immSel));
+    immideateGen #(32) immInst(.imm32(immidiate32b), .instr(instr32), .immSelect(ImmSel));
+    // ---------------------------
 
+
+
+    // register value labels
+    wire [31:0] dataRS1, dataRS2;//, dataRD;
+    registerFile #(32, 5) riscRegisters(
+        .regDataA(dataRS1), .regDataB(dataRS2), .regDataD(writeBackData), .addrA(rs1addr),
+        .addrB(rs2addr), .addrD(rdaddr), .regWEn(RegWEn), .sysCLK(mainCLOCK)
+    );
+
+
+    // ---- INSTRUCTION EXECUTE ----
     // ALU muxers
     wire [31:0] ALUinA, ALUinB;
     mux2x1 #(32) aluinputMUX1(.M(ALUinA), .X(dataRS1), .Y(PC32), .Sel(ASel));
@@ -44,48 +60,74 @@ module mainProcessor(
     );
 
     // comparator
-    comparatorNx #(32) compAB(.BrLt(), .BrEq(), .A(dataRS1), .B(dataRS2));
+    wire BrLt, BrEq;
+    comparatorNx #(32) compAB(
+        .BrLt(BrLt), .BrEq(BrEq), .A(dataRS1), .B(dataRS2)
+    );
+    // ---------------------------
 
-    // memory
+
+
+
+
+    // ---- MEMORY ----
     wire [31:0] dataRead;
     dataMemory #(32, 16) myDMEM(
-        .memDataR(dataRead), .memDataW(dataRS2), .addrD(aluOut), .memRW(), .sysCLK(mainCLOCK)
+        .memDataR(dataRead), .memDataW(dataRS2), .addrD(aluOut), .memRW(MemRW), .sysCLK(mainCLOCK)
     );
+    // ---------------------------
 
-    // write back stage
+
+
+    // ---- DATA WRITE BACK STAGE ----
     reg [31:0] writeBackData;
-    always@() begin
+    always@(*) begin
         case(WBSel)
             2'b00: writeBackData = aluOut;
             2'b01: writeBackData = dataRead;
-            2'b10: writeBackData = {16'b0, PCNext};
+            2'b10: writeBackData = {16'b0, PC16Next};
             default: writeBackData = 32'h0;
         endcase
     end
+    // ---------------------------
 
+
+
+
+    // ---- THE CONTROL PATH ----
+    wire PCSel;
+    wire [2:0] ImmSel;
+    wire BrUn, ASel, BSel;
+    wire [3:0] ALUSel;
+    wire MemRW, RegWEn;
+    wire [1:0] WBSel;
+
+    ControlPath32 #(16, 16) myCP(
+        PCSel, ImmSel, BrUn, ASel, BSel, ALUSel, MemRW, RegWEn, WBSel, instr32, BrEq, BrLt, mainCLOCK
+    );
+    // ---------------------------
 endmodule
 
 // posedge counter with async reset
-// programCounter #(pcWidth) myPC(.PC(), .PCNext(), .sysCLK(), .pRST());
+// programCounter #(pcWidth) myPC(.PC(), .PCNext(), .ALUout(), .PCSel(), .sysCLK(), .pRST());
 module programCounter #(parameter counterWidth = 16)(
     output reg [(counterWidth-1):0]PC,
     output reg [(counterWidth-1):0]PCNext,
+    input  [31:0]ALUout,
+    input  PCSel,
     input  sysCLK, pRST
 );
     reg [(counterWidth-1):0] PCplus;
 
     always@(posedge sysCLK or posedge pRST) begin
-        PCplus = PC + 1;
-
+        PCplus = PC + 16'd1;
         if (pRST) begin
             PC <= 1'b0;
         end else begin
-
             case(PCSel)
                 1'b0: PCNext = PCplus;
                 1'b1: PCNext = ALUout[(counterWidth-1):0];
             endcase
-
             PC <= PCNext;
         end
     end
@@ -142,15 +184,15 @@ module splitInstruction (
     output [6:0] funct7,
     input  [31:0] instr
 );
+
     assign opcode[6:0] = instr[6:0];
     assign rd[4:0] = instr[11:7]; 
     assign funct3[2:0] = instr[14:12];
     assign rs1[4:0] = instr[19:15];
-    assign rs2[4:0] = isntr[24:20];
+    assign rs2[4:0] = instr[24:20];
     assign funct7[6:0] = instr[31:25];
 
 endmodule
-
 
 
 /*  A Generalized 2x1 MUX
