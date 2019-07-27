@@ -77,9 +77,9 @@ module controlPathDriver #(parameter controlWordWidth=16, parameter caddrW=16) (
 
 	wire [14:0] rawControlWord;	// one word to drive 'em all
 	wire [11:0] rawInstCodes;	// all the bits that matter
-	assign rawInstCodes[11:0] = {inst32[30], inst32[14:12], inst32[6:2], BrEq, BrLt};
+	assign rawInstCodes[10:0] = {inst32[30], inst32[14:12], inst32[6:2], BrEq, BrLt};
 
-	ControlPath32v2 callCP(rawControlWord[14:0], rawInstCodes[11:0], sysCLK);
+	ControlPath32v2 callCP(rawControlWord[14:0], rawInstCodes[10:0], sysCLK);
 
 	// Preparing Controls to output
     assign PCSel        = rawControlWord[14];
@@ -96,7 +96,7 @@ endmodule
 
 module ControlPath32v2 (
     output reg [14:0] controlWord,
-    input  [11:0] instrBits,
+    input  [10:0] instrBits,
     input  sysCLK
 );
 	/*-------------------------------
@@ -109,18 +109,58 @@ module ControlPath32v2 (
 		SB-Type		24		11000
 	-------------------------------*/
 	
+	wire [3:0]ALUi, ALUr;
+	CP_RFormatDecoder cpr(ALUr, {instrBits[10], instrBits[9:7]});
+	CP_RFormatDecoder cpi(ALUi, {instrBits[10], instrBits[9:7]});
+
 	initial controlWord = 15'b0;
 	always@(posedge sysCLK) begin
 		case(instrBits[6:2] /*OPCODE*/)
 		//PCSel, ImmSel, BrUn, ASel, BSel, ALUSel, MemRW, RegWEn, WBSel
 			5'b00000: controlWord <= {1'b0, 3'b000, 1'bx, 1'b0, 1'b1, 4'b0000, 1'b0, 1'b1, 1'b1}; //L
-			5'b11000: controlWord <= {1'b0, 3'bxxx, 1'bx, 1'b0, 1'b0, 4'b0000, 1'b0, 1'b1, 1'b0}; //R
-			5'b00100: controlWord <= {1'b0, 3'b000, 1'bx, 1'b0, 1'b1, 4'b0000, 1'b0, 1'b1, 1'b0}; //I
+			5'b11000: controlWord <= {1'b0, 3'bxxx, 1'bx, 1'b0, 1'b0, 	 ALUr, 1'b0, 1'b1, 1'b0}; //R
+			5'b00100: controlWord <= {1'b0, 3'b000, 1'bx, 1'b0, 1'b1, 	 ALUi, 1'b0, 1'b1, 1'b0}; //I
 			5'b01000: controlWord <= {1'b0, 3'b001, 1'bx, 1'b0, 1'b1, 4'b0000, 1'b1, 1'b0, 1'bx}; //S
 			default: controlWord <= 15'b0;
 		endcase
 	end
 endmodule
+
+/* Control Path Decoders
+---------------------------------
+	[R -> ALU Decoder]
+	A3 A.B'
+	A2 A + C'D + B'C
+	A1 B'D + B'C + BD'
+	A0 B'C + CD + AD + BC'D'
+
+	[I -> ALU Decoder]
+	A3 0
+	A2 C'D + B'C
+	A1 CD' + BD' + B'D
+	A0 B'C + CD + AD + BC'D'	*/
+
+module CP_RFormatDecoder(
+	output [3:0]ALUSelr,
+	input  [3:0]CW //B30,Func3
+);
+	assign ALUSelr[3] = ((CW[3] & ~CW[2]));
+	assign ALUSelr[2] = ((CW[3]) | (~CW[1] & CW[0]) | (~CW[2] & CW[1]));
+	assign ALUSelr[1] = ((~CW[2] & CW[0]) | (~CW[2] & CW[1]) | (CW[2] & ~CW[0]));
+	assign ALUSelr[0] = ((~CW[2] & CW[1]) | (CW[1] & CW[0]) | (CW[3] & CW[0]) | (CW[2] & ~CW[1] & ~CW[0]));
+endmodule
+
+module CP_IFormatDecoder(
+	output [3:0]ALUSeli,
+	input  [3:0]CW
+);
+	assign ALUSeli[3] = (0);
+	assign ALUSeli[3] = ((~CW[1] & CW[0]) | (~CW[2] & CW[1]));
+	assign ALUSeli[3] = ((CW[1] & ~CW[0]) | (CW[2] & ~CW[0]) | (~CW[2] & CW[0]));
+	assign ALUSeli[3] = ((~CW[2] & CW[1]) | (CW[1] & CW[0]) | (CW[3] & CW[0]) | (CW[2] & ~CW[1] & ~CW[0]));
+
+endmodule
+
 
 // register File
 // a RAM with single port in, dual port out

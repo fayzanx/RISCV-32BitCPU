@@ -3,6 +3,7 @@ module mainProcessor(
         output [31:0] PC32,
         output [31:0] immidiate32b,
         output [31:0] dataRS1, dataRS2, aluOut, ALUinA, ALUinB,
+        output reg [31:0] writeBackData,
         output [4:0]  rs1addr, rs2addr, rdaddr,
         input  [3:2]  KEY
 );
@@ -30,7 +31,7 @@ module mainProcessor(
     wire BrLt, BrEq;
 
     // WriteBack stage
-    reg [31:0] writeBackData;
+    //reg [31:0] writeBackData;
 
     // ---- INSTRUCTION FETCH ----
     programCounter #(16) myPC(
@@ -116,7 +117,7 @@ endmodule
 // programCounter #(pcWidth) myPC(.PC(), .PCNext(), .ALUout(), .PCSel(), .sysCLK(), .pRST());
 module programCounter #(parameter counterWidth = 16)(
     output reg [(counterWidth-1):0]PC,
-    output reg [(counterWidth-1):0]PCNext,
+    output [(counterWidth-1):0]PCNext,
     input  [31:0]ALUout,
     input  PCSel,
     input  sysCLK, pRST
@@ -137,6 +138,8 @@ module programCounter #(parameter counterWidth = 16)(
             //PC <= PCNext;
         end
     end
+	 
+	 assign PCNext = PC;
 endmodule
 
 
@@ -155,7 +158,6 @@ module comparatorNx #(parameter cW = 32) (
             BrEq = 1;
     end
 endmodule
-
 
 
 // immideate generator
@@ -184,7 +186,6 @@ module immideateGen #(parameter instWidth = 32) (
         endcase
     end
 endmodule
-
 
 
 // splitting the instruction
@@ -227,18 +228,17 @@ endmodule
 
 module testBenchGen;
     /*  VERIFICATION -> PROCESSOR   */
-    reg  clk;
-    reg  resetPC;
-    wire [31:0] instruction, RS1, RS2, OutALU, inALUa, inALUb, pc, immideate;
+    reg  clk, resetPC;
+    wire [31:0] instruction, RS1, RS2, OutALU, inALUa, inALUb, pc, immideate, wBData;
     wire [4:0] addrRS1, addrRS2, addrRD;
     mainProcessor testTheProcessor(
-        instruction, pc, immideate, RS1, RS2, OutALU, inALUa, inALUb,
+        instruction, pc, immideate, RS1, RS2, OutALU, inALUa, inALUb, wBData,
         addrRS1, addrRS2, addrRD,
         {clk, resetPC}
     );
 
     initial begin
-        clk = 1'b0; //resetPC = 1'b0; #50;
+        clk = 1'b0;
         resetPC = 1'b1;
         forever #50 clk = ~clk;
     end
@@ -287,3 +287,51 @@ module testBenchGen;
         end
     end
 endmodule*/
+
+/*  -----------------------------
+    VERIFICATION -> REGISTER FILE
+    -----------------------------
+    1. Module
+    module testTheRegFile(
+        output [31:0] dRS1, dRS2,
+        input  [31:0] dRD,
+        input  [4:0]  aRS1, aRS2, aRD,
+        input  regWEn, CLK
+    );
+        registerFile #(32, 5) riscRegisters(
+            .regDataA(dRS1), .regDataB(dRS2), .regDataD(dRD), .addrA(aRS1),
+            .addrB(aRS2), .addrD(aRD), .regWEn(regWEn), .sysCLK(CLK)
+        );
+    endmodule
+
+    2. TestBench
+    reg  clk;
+    reg  regEn;
+    reg [4:0] ars1, ars2, ard;
+    reg [31:0] datard;
+    wire [31:0] datars1, datars2;
+    testTheRegFile treg(datars1, datars2, datard, ars1, ars2, ard, regEn, clk);
+    initial begin
+        clk = 1'b0;
+        forever #50 clk = ~clk;
+    end
+
+    integer i;
+    initial begin
+        regEn = 1'b1;
+        ars1 = 1;
+        ars2 = 1;
+        for(i=0; i<32; i=i+1) begin
+            datard = 2*i;
+            ard = i;
+            #100;
+        end
+
+        regEn = 1'b0;
+        for(i=0; i<16; i=i+1) begin
+            ars1 = i;
+            ars2 = 16 + i;
+            #100;
+        end
+    end
+*/
