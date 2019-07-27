@@ -244,7 +244,7 @@ module tBench;
     mainProcessor testTheProcessor(
         instruction, pc, immideate, RS1, RS2, OutALU, inALUa, inALUb, wBData,
         addrRS1, addrRS2, addrRD,
-        PCSel,mmSel,BrUn, ASel, BSel, ALUSel, MemRW, RegWEn, WBSel,
+        PCSel, ImmSel, BrUn, ASel, BSel, ALUSel, MemRW, RegWEn, WBSel,
         {clk, resetPC}
     );
 
