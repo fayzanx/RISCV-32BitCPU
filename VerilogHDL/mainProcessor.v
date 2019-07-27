@@ -5,14 +5,18 @@ module mainProcessor(
         output [31:0] dataRS1, dataRS2, aluOut, ALUinA, ALUinB,
         output reg [31:0] writeBackData,
         output [4:0]  rs1addr, rs2addr, rdaddr,
+        output PCSel,
+        output [2:0] ImmSel,
+        output BrUn, ASel, BSel,
+        output [3:0] ALUSel,
+        output MemRW, RegWEn,
+        output [1:0] WBSel,
         input  [3:2]  KEY
 );
-
     //-----------------
         wire mainCLOCK;
         assign mainCLOCK = ~KEY[3];
     //-----------------
-
 
     //wire [31:0] instr32;
     //wire [31:0] PC32;
@@ -20,12 +24,12 @@ module mainProcessor(
     assign PC32= {16'b0, PC16};
 
     // Control Path Outputs
-    wire PCSel;
-    wire [2:0] ImmSel;
-    wire BrUn, ASel, BSel;
-    wire [3:0] ALUSel;
-    wire MemRW, RegWEn;
-    wire [1:0] WBSel;
+    // wire PCSel;
+    // wire [2:0] ImmSel;
+    // wire BrUn, ASel, BSel;
+    // wire [3:0] ALUSel;
+    // wire MemRW, RegWEn;
+    // wire [1:0] WBSel;
 
     // Comparator Outputs
     wire BrLt, BrEq;
@@ -47,7 +51,6 @@ module mainProcessor(
         PCSel, ImmSel, BrUn, ASel, BSel, ALUSel, MemRW, RegWEn, WBSel, instr32, BrEq, BrLt, mainCLOCK
     );
     // ---------------------------
-
 
 
     // ---- INSTRUCTION DECODE ----
@@ -226,14 +229,22 @@ module mux2x1 #(parameter dataW=16)(
 endmodule
 
 
-module testBenchGen;
+module tBench;
     /*  VERIFICATION -> PROCESSOR   */
     reg  clk, resetPC;
     wire [31:0] instruction, RS1, RS2, OutALU, inALUa, inALUb, pc, immideate, wBData;
     wire [4:0] addrRS1, addrRS2, addrRD;
+    wire PCSel;
+    wire [2:0] ImmSel;
+    wire BrUn, ASel, BSel;
+    wire [3:0] ALUSel;
+    wire MemRW, RegWEn;
+    wire [1:0] WBSel;
+
     mainProcessor testTheProcessor(
         instruction, pc, immideate, RS1, RS2, OutALU, inALUa, inALUb, wBData,
         addrRS1, addrRS2, addrRD,
+        PCSel,mmSel,BrUn, ASel, BSel, ALUSel, MemRW, RegWEn, WBSel,
         {clk, resetPC}
     );
 
@@ -259,38 +270,39 @@ endmodule
 					end
 			  end
 		 end
-	 end */
+	 end 
+*/
 
 /*  VERIFICATION -> IMEM
 -------------------------
-module testTheIMEM(
-    output [31:0] INST,
-    input  [15:0] INDEX,
-    input  CLK
-);
-    instMemory #(32, 4) imemtest(INST, INDEX[3:0], CLK);
-endmodule
+    module testTheIMEM(
+        output [31:0] INST,
+        input  [15:0] INDEX,
+        input  CLK
+    );
+        instMemory #(32, 4) imemtest(INST, INDEX[3:0], CLK);
+    endmodule
 
-module testBenchGen;
-    reg  clk;
-    reg [16:0]Index;
-    wire [31:0]instr;
-    testTheIMEM timem(instr, Index[3:0], clk);
-    initial begin
-        clk = 1'b0;
-        forever #50 clk = ~clk;
-    end
-    integer i;
-    initial begin
-        for(i=0; i<15; i=i+1) begin
-            #100; Index = i;
+    module testBenchGen;
+        reg  clk;
+        reg [16:0]Index;
+        wire [31:0]instr;
+        testTheIMEM timem(instr, Index[3:0], clk);
+        initial begin
+            clk = 1'b0;
+            forever #50 clk = ~clk;
         end
-    end
-endmodule*/
+        integer i;
+        initial begin
+            for(i=0; i<15; i=i+1) begin
+                #100; Index = i;
+            end
+        end
+    endmodule
+*/
 
-/*  -----------------------------
-    VERIFICATION -> REGISTER FILE
-    -----------------------------
+/*  VERIFICATION -> REGISTER FILE
+-----------------------------
     1. Module
     module testTheRegFile(
         output [31:0] dRS1, dRS2,
@@ -332,6 +344,30 @@ endmodule*/
             ars1 = i;
             ars2 = 16 + i;
             #100;
+        end
+    end
+*/
+
+/*  VERIFICATION -> COMMAND DECODER LV.2
+------------------------------
+    1. Module
+    module testCPaluDec(
+        output [3:0]ALUr, ALUi,
+        input  [3:0]b30_f3
+    );
+        CP_RFormatDecoder cpr(ALUr, b30_f3);
+        CP_IFormatDecoder cpi(ALUi, b30_f3);
+    endmodule
+
+    2. TestBench
+        reg  [3:0] b30_f3;
+    wire [3:0] ALUr, ALUi;
+    testCPaluDec testit(ALUr, ALUi, b30_f3);
+
+    integer i;
+    initial begin
+        for(i=0; i<16; i=i+1) begin
+            b30_f3 = i; #100;
         end
     end
 */

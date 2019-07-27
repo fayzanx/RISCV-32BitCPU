@@ -111,16 +111,16 @@ module ControlPath32v2 (
 	
 	wire [3:0]ALUi, ALUr;
 	CP_RFormatDecoder cpr(ALUr, {instrBits[10], instrBits[9:7]});
-	CP_RFormatDecoder cpi(ALUi, {instrBits[10], instrBits[9:7]});
+	CP_IFormatDecoder cpi(ALUi, {instrBits[10], instrBits[9:7]});
 
 	initial controlWord = 15'b0;
 	always@(posedge sysCLK) begin
 		case(instrBits[6:2] /*OPCODE*/)
 		//PCSel, ImmSel, BrUn, ASel, BSel, ALUSel, MemRW, RegWEn, WBSel
-			5'b00000: controlWord <= {1'b0, 3'b000, 1'bx, 1'b0, 1'b1, 4'b0000, 1'b0, 1'b1, 1'b1}; //L
-			5'b11000: controlWord <= {1'b0, 3'bxxx, 1'bx, 1'b0, 1'b0, 	 ALUr, 1'b0, 1'b1, 1'b0}; //R
-			5'b00100: controlWord <= {1'b0, 3'b000, 1'bx, 1'b0, 1'b1, 	 ALUi, 1'b0, 1'b1, 1'b0}; //I
-			5'b01000: controlWord <= {1'b0, 3'b001, 1'bx, 1'b0, 1'b1, 4'b0000, 1'b1, 1'b0, 1'bx}; //S
+			5'b00000: controlWord <= {1'b0, 3'b000, 1'bx, 1'b0, 1'b1, 4'b0000, 1'b0, 1'b1, 2'b01}; //L
+			5'b11000: controlWord <= {1'b0, 3'bxxx, 1'bx, 1'b0, 1'b0, 	 ALUr, 1'b0, 1'b1, 2'b00}; //R
+			5'b00100: controlWord <= {1'b0, 3'b000, 1'bx, 1'b0, 1'b1, 	 ALUi, 1'b0, 1'b1, 2'b00}; //I
+			5'b01000: controlWord <= {1'b0, 3'b001, 1'bx, 1'b0, 1'b1, 4'b0000, 1'b1, 1'b0, 2'bxx}; //S
 			default: controlWord <= 15'b0;
 		endcase
 	end
@@ -155,9 +155,9 @@ module CP_IFormatDecoder(
 	input  [3:0]CW
 );
 	assign ALUSeli[3] = (0);
-	assign ALUSeli[3] = ((~CW[1] & CW[0]) | (~CW[2] & CW[1]));
-	assign ALUSeli[3] = ((CW[1] & ~CW[0]) | (CW[2] & ~CW[0]) | (~CW[2] & CW[0]));
-	assign ALUSeli[3] = ((~CW[2] & CW[1]) | (CW[1] & CW[0]) | (CW[3] & CW[0]) | (CW[2] & ~CW[1] & ~CW[0]));
+	assign ALUSeli[2] = ((~CW[1] & CW[0]) | (~CW[2] & CW[1]));
+	assign ALUSeli[1] = ((CW[1] & ~CW[0]) | (CW[2] & ~CW[0]) | (~CW[2] & CW[0]));
+	assign ALUSeli[0] = ((~CW[2] & CW[1]) | (CW[1] & CW[0]) | (CW[3] & CW[0]) | (CW[2] & ~CW[1] & ~CW[0]));
 
 endmodule
 
